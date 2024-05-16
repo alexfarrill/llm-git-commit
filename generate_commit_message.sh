@@ -2,14 +2,22 @@
 
 # Script to generate commit message
 
-# Check if .llm-system-prompt file exists
-if [ ! -f .llm-system-prompt ]; then
-    echo ".llm-system-prompt file not found in the current directory."
-    exit 1
-fi
+# Traverse up directories to find the .llm-system-prompt file and read its content
+file_name=".llm-system-prompt"
+current_dir="$PWD"
 
-# Read the content of .llm-system-prompt file
-system_prompt=$(cat .llm-system-prompt)
+while [ "$current_dir" != "/" ]; do
+  if [ -f "$current_dir/$file_name" ]; then
+    system_prompt=$(cat "$current_dir/$file_name")
+    break
+  fi
+  current_dir=$(dirname "$current_dir")
+done
+
+if [ -z "$system_prompt" ]; then
+  echo "File .llm-system-prompt not found."
+  exit 1
+fi
 
 # Create a hint from arguments if provided
 hint=""

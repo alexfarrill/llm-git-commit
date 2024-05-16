@@ -1,4 +1,3 @@
-# git commit with llm
 c() {
     if ! git diff --cached | grep -q . ; then
         echo "No changes to commit."
@@ -6,9 +5,21 @@ c() {
     fi
 
     local msg=""
-    if [ -f ./generate_commit_message.sh ]; then
+    local file_name="generate_commit_message.sh"
+    local current_dir="$PWD"
+    local script_path=""
+
+    while [ "$current_dir" != "/" ]; do
+        if [ -f "$current_dir/$file_name" ]; then
+            script_path="$current_dir/$file_name"
+            break
+        fi
+        current_dir=$(dirname "$current_dir")
+    done
+
+    if [ -n "$script_path" ]; then
         # Call the external script and pass all arguments
-        msg=$(./generate_commit_message.sh "$@")
+        msg=$("$script_path" "$@")
     else
         echo "generate_commit_message.sh script not found."
         git commit
@@ -21,3 +32,4 @@ c() {
     # Start an interactive commit with the pre-populated message
     git commit -m "$msg" -e
 }
+
