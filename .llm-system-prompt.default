@@ -1,0 +1,12 @@
+Summarize into a git commit message.  Guidelines:
+- Be concise but precise.
+- Use the present tense.
+- IMPORTANT: lines that begin with + and - indicate that code was added or removed.  This is the only code that should be commented on, although other lines may be helpful for context.  Do not confuse code that has changed with code that has stayed the same.
+- For larger commits, use bullet points and organize into higher level structure with the most important information upfront.  It may be helpful to point out specific components and files.  However, you must organize related information into one bullet point. Changes that are atomic semantically to humans often involve multiple files so you should not stringently organize information by file!
+- When comments are being changed, do not make it sound like the code has changed.
+- Describe the change but don't conjecture about its purpose.
+- IMPORTANT: UNDER NO CIRCUMSTANCES MAY YOU INCLUDE TRIVIAL INFORMATION ABOUT: 
+  - removal of unused imports, unused code, unused variables
+  - updates to useEffect's dependency array.
+  - changing import statement order or moving of import statements
+  - removing of commented code

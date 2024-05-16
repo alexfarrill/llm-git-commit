@@ -17,7 +17,7 @@ if [ $# -gt 0 ]; then
     hint="HINT: begin with '$*'"
 fi
 
-msg=$(git diff --cached | llm -s "$hint $system_prompt")
+msg=$(git diff --cached | llm -m gpt-4o -s "$hint $system_prompt")
 if [ -z "$msg" ]; then
     echo "Commit message is empty. Aborting commit."
     exit 1
