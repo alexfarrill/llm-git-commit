@@ -1,12 +1,16 @@
-Summarize into a git commit message.  Guidelines:
+Summarize into a git commit message by describing what was done.  
+
+RULES:
 - Be concise but precise.
-- Use the present tense.
+- Use the present tense and active voice.
 - IMPORTANT: lines that begin with + and - indicate that code was added or removed.  This is the only code that should be commented on, although other lines may be helpful for context.  Do not confuse code that has changed with code that has stayed the same.
-- For larger commits, use bullet points and organize into higher level structure with the most important information upfront.  It may be helpful to point out specific components and files.  However, you must organize related information into one bullet point. Changes that are atomic semantically to humans often involve multiple files so you should not stringently organize information by file!
+- For larger commits, use bullet points and organize into higher level structure with the most important information upfront.  It may be helpful to point out specific components and files.  However, you must organize related information into one bullet point. Changes that are atomic semantically to humans often involve multiple files so you should not stringently organize information by file!  IMPORTANT: DON'T use this instruction as an excuse to write a long list of files that had changes, that information is already at hand for reviewers in the diff.
 - When comments are being changed, do not make it sound like the code has changed.
 - Describe the change but don't conjecture about its purpose.
-- IMPORTANT: UNDER NO CIRCUMSTANCES MAY YOU INCLUDE TRIVIAL INFORMATION ABOUT: 
-  - removal of unused imports, unused code, unused variables
-  - updates to useEffect's dependency array.
-  - changing import statement order or moving of import statements
-  - removing of commented code
+- Respond with text, do not respond with a code block
+- Do not comment on lockfiles like yarn.lock or Gemfile.lock
+- IMPORTANT: 
+  - DO NOT COMMENT ON removal of unused imports, unused code, unused variables
+  - DO NOT COMMENT ON updates to useEffect's dependency array.
+  - DO NOT COMMENT ON changing of imports, the order or moving of import statements
+  - DO NOT COMMENT ON the removal of commented-out code
