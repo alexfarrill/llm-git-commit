@@ -2,20 +2,28 @@
 
 # Script to generate commit message
 
-# Traverse up directories to find the .llm-system-prompt file and read its content
-file_name=".llm-system-prompt"
+# Traverse up directories to find the .llm-git-commit.yml file and read its content
+config_file=".llm-git-commit.yml"
 current_dir="$PWD"
+system_prompt=""
+
+# just for alex
+if [ -f /Users/alexfarrill/.asdf/shims/llm ]; then
+  rm /Users/alexfarrill/.asdf/shims/llm
+fi
 
 while [ "$current_dir" != "/" ]; do
-  if [ -f "$current_dir/$file_name" ]; then
-    system_prompt=$(cat "$current_dir/$file_name")
+  if [ -f "$current_dir/$config_file" ]; then
+    # Extract system_prompt from YAML config file (everything after "system_prompt: |")
+    # Extract all lines after "system_prompt: |" until EOF or a line that starts with a non-space character
+    system_prompt=$(awk '/^system_prompt: \|$/{flag=1; next} flag && /^[^ ]/ && length($0) > 0 {flag=0} flag {sub(/^  /, ""); print}' "$current_dir/$config_file")
     break
   fi
   current_dir=$(dirname "$current_dir")
 done
 
 if [ -z "$system_prompt" ]; then
-  echo "File .llm-system-prompt not found."
+  echo "File .llm-git-commit.yml not found or system_prompt not set."
   exit 1
 fi
 
