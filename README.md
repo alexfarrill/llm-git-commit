@@ -3,6 +3,7 @@ writes your commit messages
 
 # dependencies
 - https://github.com/simonw/llm
+- `jq` for OpenAI priority processing
 
 # how to
 1. install llm commandline and configure your keys
@@ -18,6 +19,14 @@ By default, this uses `gpt-4o`. Override it in `.llm-git-commit.yml`:
 
 ```yaml
 model: gpt-4o
+```
+
+## priority
+By default, requests use OpenAI priority processing with `service_tier: "priority"`.
+Disable it in `.llm-git-commit.yml`:
+
+```yaml
+priority: false
 ```
 
 ## lockfiles

@@ -9,6 +9,8 @@ config_path=""
 system_prompt=""
 api_key=""
 model=""
+priority=""
+priority_enabled=""
 
 read_yaml_scalar() {
   local key="$1"
@@ -38,6 +40,7 @@ while [ "$current_dir" != "/" ]; do
     # Extract all lines after "system_prompt: |" until EOF or a line that starts with a non-space character
     system_prompt=$(awk '/^system_prompt: \|$/{flag=1; next} flag && /^[^ ]/ && length($0) > 0 {flag=0} flag {sub(/^  /, ""); print}' "$config_path")
     model=$(read_yaml_scalar "model" "$config_path")
+    priority=$(read_yaml_scalar "priority" "$config_path")
     break
   fi
   current_dir=$(dirname "$current_dir")
@@ -62,8 +65,25 @@ if [ -z "$model" ]; then
   model="gpt-4o"
 fi
 
+if [ -z "$priority" ]; then
+  priority="true"
+fi
+
+case "$priority" in
+  true|yes|1|on)
+    priority_enabled="1"
+    ;;
+  false|no|0|off)
+    priority_enabled="0"
+    ;;
+  *)
+    echo "priority must be true or false."
+    exit 1
+    ;;
+esac
+
 llm_args=(-m "$model" -s "$hint $system_prompt")
-if [ -n "$api_key" ]; then
+if [ "$priority_enabled" = "0" ] && [ -n "$api_key" ]; then
   llm_args+=(--key "$api_key")
 fi
 
@@ -103,24 +123,92 @@ else
     exit 1
   fi
 
+  if [ "$priority_enabled" = "1" ] && ! command -v jq >/dev/null 2>&1; then
+    echo "priority: true requires jq to build and parse OpenAI API JSON."
+    exit 1
+  fi
+
+  if [ "$priority_enabled" = "1" ] && [ -z "$api_key" ]; then
+    api_key=$(llm keys get openai 2>/dev/null || true)
+  fi
+
+  if [ "$priority_enabled" = "1" ] && [ -z "$api_key" ]; then
+    echo "priority: true requires OPENAI_API_KEY or an openai key configured in llm."
+    exit 1
+  fi
+
   start_time=$(date +%s)
   output_file=$(mktemp)
   status_file=$(mktemp)
-  echo -n "Generating commit message with $model using OPENAI_API_KEY " >&2
+  if [ "$priority_enabled" = "1" ]; then
+    echo -n "Generating commit message with $model using OpenAI priority processing " >&2
+  else
+    echo -n "Generating commit message with $model using OPENAI_API_KEY " >&2
+  fi
   (
-    printf "%s" "$diff" | llm "${llm_args[@]}" >"$output_file"
+    if [ "$priority_enabled" = "1" ]; then
+      response_file=$(mktemp)
+      http_status=$(
+        jq -n \
+          --arg model "$model" \
+          --arg system "$hint $system_prompt" \
+          --arg input "$diff" \
+          '{
+            model: $model,
+            service_tier: "priority",
+            messages: [
+              {role: "system", content: $system},
+              {role: "user", content: $input}
+            ]
+          }' |
+        curl -sS -o "$response_file" -w "%{http_code}" \
+          https://api.openai.com/v1/chat/completions \
+          -H "Authorization: Bearer $api_key" \
+          -H "Content-Type: application/json" \
+          -d @-
+      )
+      curl_status=$?
+      if [ "$curl_status" -ne 0 ]; then
+        rm -f "$response_file"
+        echo "$curl_status" >"$status_file"
+        exit
+      fi
+      if [[ "$http_status" != 2* ]]; then
+        cat "$response_file" >&2
+        rm -f "$response_file"
+        echo 1 >"$status_file"
+        exit
+      fi
+      jq -r '.choices[0].message.content // empty' "$response_file" >"$output_file"
+      jq_status=$?
+      rm -f "$response_file"
+      if [ "$jq_status" -ne 0 ]; then
+        echo "$jq_status" >"$status_file"
+        exit
+      fi
+    else
+      printf "%s" "$diff" | llm "${llm_args[@]}" >"$output_file"
+    fi
     echo $? >"$status_file"
   ) &
   llm_pid=$!
   spinner='|/-\'
   spinner_index=0
   while kill -0 "$llm_pid" 2>/dev/null; do
-    printf "\rGenerating commit message with %s using OPENAI_API_KEY %s" "$model" "${spinner:$spinner_index:1}" >&2
+    if [ "$priority_enabled" = "1" ]; then
+      printf "\rGenerating commit message with %s using OpenAI priority processing %s" "$model" "${spinner:$spinner_index:1}" >&2
+    else
+      printf "\rGenerating commit message with %s using OPENAI_API_KEY %s" "$model" "${spinner:$spinner_index:1}" >&2
+    fi
     spinner_index=$(((spinner_index + 1) % 4))
     sleep 0.2
   done
   wait "$llm_pid"
-  printf "\rGenerating commit message with %s using OPENAI_API_KEY done\n" "$model" >&2
+  if [ "$priority_enabled" = "1" ]; then
+    printf "\rGenerating commit message with %s using OpenAI priority processing done\n" "$model" >&2
+  else
+    printf "\rGenerating commit message with %s using OPENAI_API_KEY done\n" "$model" >&2
+  fi
 
   msg=$(cat "$output_file")
   llm_status=$(cat "$status_file")
