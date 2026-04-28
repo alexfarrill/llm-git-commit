@@ -1,4 +1,5 @@
 script_path: /path/to/llm-git-commit/generate_commit_message.sh
+model: gpt-4o
 system_prompt: |
   Summarize into a git commit message by describing what was done.
 
