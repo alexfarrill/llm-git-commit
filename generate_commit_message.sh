@@ -103,7 +103,36 @@ else
     exit 1
   fi
 
-  msg=$(printf "%s" "$diff" | llm "${llm_args[@]}")
+  start_time=$(date +%s)
+  output_file=$(mktemp)
+  status_file=$(mktemp)
+  echo -n "Generating commit message with $model using OPENAI_API_KEY " >&2
+  (
+    printf "%s" "$diff" | llm "${llm_args[@]}" >"$output_file"
+    echo $? >"$status_file"
+  ) &
+  llm_pid=$!
+  spinner='|/-\'
+  spinner_index=0
+  while kill -0 "$llm_pid" 2>/dev/null; do
+    printf "\rGenerating commit message with %s using OPENAI_API_KEY %s" "$model" "${spinner:$spinner_index:1}" >&2
+    spinner_index=$(((spinner_index + 1) % 4))
+    sleep 0.2
+  done
+  wait "$llm_pid"
+  printf "\rGenerating commit message with %s using OPENAI_API_KEY done\n" "$model" >&2
+
+  msg=$(cat "$output_file")
+  llm_status=$(cat "$status_file")
+  rm -f "$output_file" "$status_file"
+  elapsed=$(($(date +%s) - start_time))
+
+  if [ "$llm_status" -ne 0 ]; then
+    echo "Commit message generation failed after ${elapsed}s." >&2
+    exit "$llm_status"
+  fi
+
+  echo "Generated commit message in ${elapsed}s." >&2
 fi
 if [ -z "$msg" ]; then
     echo "Commit message is empty. Aborting commit."
